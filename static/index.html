@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mood Mirror</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link
+      href="https://cdn.jsdelivr.net/npm/daisyui@5"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  </head>
+  <body class="min-h-screen flex pt-20 mx-[25%] justify-center p-4">
+    <div class="flex flex-col items-center text-center">
+      <img class=" " src="static/assets/2025-06-25-Mood-Mirror.gif" alt="" />
+      <p class="text-xl pt-5">
+        Mood Mirror es una aplicación que analiza las emociones presentes en un
+        texto. Utiliza un modelo de inteligencia artificial entrenado con más de
+        15,000 ejemplos para ofrecer predicciones precisas. Solo tienes que
+        ingresar tu texto en el cuadro y hacer clic en "Analizar" para descubrir
+        su tono emocional.
+      </p>
+      <div class="flex flex-col items-center pt-5 gap-3">
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend text-lg">
+            Ingresar texto (inglés)
+          </legend>
+          <textarea
+            class="textarea w-92"
+            id="text"
+            placeholder="I am happy..."
+          ></textarea>
+        </fieldset>
+
+        <button class="btn" id="send">Analizar</button>
+      </div>
+      <div class="pt-5">
+        <p id="result"></p>
+      </div>
+    </div>
+
+    <script>
+      const sendButton = document.getElementById('send')
+      const textArea = document.getElementById('text')
+      const resultDiv = document.getElementById('result')
+
+      sendButton.onclick = async () => {
+        const text = textArea.value.trim()
+
+        if (!text) {
+          resultDiv.textContent = 'Por favor, ingresa algún texto.'
+          resultDiv.classList.remove('hidden')
+          return
+        }
+
+        resultDiv.innerHTML =
+          '<span class="loading loading-spinner loading-md"></span>'
+
+        resultDiv.classList.remove('hidden')
+
+        try {
+          const res = await fetch('/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text }),
+          })
+
+          if (!res.ok) {
+            const errText = await res.text()
+            resultDiv.textContent = `Error ${res.status}: ${errText}`
+            return
+          }
+
+          const data = await res.json()
+          const { emotion, confidence } = data
+
+          if (!emotion || confidence == null) {
+            resultDiv.textContent = 'Respuesta inválida del servidor.'
+            return
+          }
+
+          const emotionMap = {
+            joy: { es: 'Alegre', img: 'joy.jpg' },
+            sadness: { es: 'Triste', img: 'sadness.jpg' },
+            anger: { es: 'Enojado', img: 'anger.jpg' },
+            fear: { es: 'Miedo', img: 'fear.jpg' },
+            love: { es: 'Amor', img: 'love.jpg' },
+            surprise: { es: 'Sorprendido', img: 'surprise.jpg' },
+          }
+
+          const info = emotionMap[emotion] || {
+            es: emotion,
+            img: 'default.png',
+          }
+
+          resultDiv.innerHTML = `
+  <div class="flex flex-col items-center gap-3">
+    <div class="text-2xl font-bold text-primary">Emoción detectada</div>
+   
+    <div class="text-xl">
+      <span class="px-3 py-1 text-2xl">${info.es}</span>
+    </div>
+     <img src="/static/assets/emoij/${
+       info.img
+     }" alt="${emotion}" class="w-50 h-50 rounded" />
+    <div class="text-2xl font-bold text-primary">Porcentaje de confiabilidad</div>
+    <div class="text-lg">
+      <span class="px-3">${(confidence * 100).toFixed(2)}%</span>
+    </div>
+  </div>
+`
+        } catch (err) {
+          console.error('Fetch error', err)
+          resultDiv.textContent = `Error: ${err}`
+        }
+      }
+    </script>
+  </body>
+</html>
